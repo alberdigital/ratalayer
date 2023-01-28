@@ -2,7 +2,7 @@
 
 function main() {
 
-	var MAX_ITERATIONS = 10000;
+	var MAX_ITERATIONS = null;
 
 	/**
 	 * Hace visibles todos los grupos y oculta todas las capas.
@@ -39,6 +39,13 @@ function main() {
 			exportOptions
 		);
 	}
+
+	function saveMetadata(metadata) {
+		var file = new File(getFolder("build/metadata") + "/" + metadata.fileName + ".json");
+		file.open("w");
+		file.write(JSON.stringify(metadata));
+		file.close();
+	  }
 
 	/**
 	 * Extrae las categorías a las que pertenece una capa. Las categorías están definidas en el nombre de la capa, con el formato:
@@ -80,8 +87,13 @@ function main() {
 	
 	// COMBINATION COUNTER
 	// -------------------
-	// Gestiona un array en el que cada posición indica la capa iterada dentro de cada grupo.
-	// Se inicializa con todas las posiciones a 0.
+	
+	/**
+	 * Gestiona un array en el que cada posición indica la capa iterada dentro de cada grupo.
+	 * Se inicializa con todas las posiciones a 0. Dispone de dos métodos para cambiar las capas activas: increment() y setRandom().
+	 * increment() permite recorrer todas las posibles combinaciones, incrementando las capas de una en una para todos los grupos.
+	 * setRandom() permite establecer una capa activa aleatoria (con pesos) para cada grupo.
+	 */
 	var combinationCounter = {
 		numGroups: 0,
 		groupStates: [],
@@ -136,12 +148,14 @@ function main() {
 			return this.incrementGroup(this.numGroups - 1);
 		},
 
+		/**
+		 * Establece una capa activa al azar en cada grupo, respetando los pesos indicados en el nombre
+		 * de cada capa (entre corchetes).
+		 */
 		setRandom: function() {
 
 			for (var g = 0; g < this.numGroups; g++) {
 				var groupState = this.groupStates[g];
-				// var newLayer = Math.floor(Math.random() * groupState.numLayers)
-				// this.groupStates[g].currentLayer = newLayer;
 
 				// Obtén el total de pesos.
 				var totalWeight = 0;
@@ -178,12 +192,7 @@ function main() {
 
 	// ============================================
 
-	// var continueConfirmation = confirm(
-	//   "You are about to use the Ratascript art generator. Are you sure you want to continue?"
-	// );
-
-	// var name = prompt("What is the name of your collection?", "my-collection");
-	var collectionName = "ratas";
+	var collectionName = prompt("What is the name of your collection?", "collection");
 
 	var doCompleteTraversalStr = prompt("Do you want to do a complete traversal (s/n)?", "n");
 	if (doCompleteTraversalStr == null) {
@@ -215,7 +224,7 @@ function main() {
 
 		var combinationIsValid = true;
 
-		if (iterationCounter++ > MAX_ITERATIONS) {
+		if (MAX_ITERATIONS != null && iterationCounter++ > MAX_ITERATIONS) {
 			break;
 		}
 
@@ -260,7 +269,7 @@ function main() {
 
 		if (combinationIsValid) {
 
-			// Resetea los grupos e itera activar solo la capa activa de cada grupo. 
+			// Resetea los grupos e itera para activar solo la capa activa de cada grupo. 
 			resetLayers(groups);
 			for (var g = 0; g < groups.length; g++) {
 				var group = groups[g];
@@ -270,10 +279,28 @@ function main() {
 			}
 			
 			imageCounter++;
-			var imageName = collectionName + imageCounter;
 
-			$.writeln("Guardando imagen: " + imageName);
-			saveImage(imageName);
+			// Guarda la imagen.
+			var fileName = collectionName + imageCounter;
+			$.writeln("Guardando imagen: " + fileName);
+			saveImage(fileName);
+
+			// Genera metadatos.
+			var layersNames = {};
+			for (var g = 0; g < groups.length; g++) {
+				var group = groups[g];
+				var layerIndex = combinationCounter.getCurrentLayer(g)
+				var layer = group.layers[layerIndex];
+				layersNames[group.name] = layer.name
+			}
+
+			var metadata = {
+				fileName: fileName,
+				layers: layersNames,
+				categories: cats
+			};
+			saveMetadata(metadata);
+
 		}
 		
 		// Siguiente combinación.
