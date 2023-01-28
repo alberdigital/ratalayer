@@ -1,6 +1,8 @@
+//@include "./lib/json2.js"
+
 function main() {
 
-	var MAX_ITERATIONS = 10;
+	var MAX_ITERATIONS = 100;
 
 	/**
 	 * Hace visibles todos los grupos y oculta todas las capas.
@@ -15,6 +17,53 @@ function main() {
 		}
 	}
 
+	function getFolder(_name) {
+		var path = app.activeDocument.path;
+		var folder = new Folder(path + "/" + _name);
+		if (!folder.exists) {
+			folder.create();
+		}
+		return folder;
+	}
+
+	function saveImage(_name) {
+		var saveFile = new File(getFolder("build/images") + "/" + _name + ".png");
+		exportOptions = new ExportOptionsSaveForWeb();
+		exportOptions.format = SaveDocumentType.PNG;
+		exportOptions.PNG24 = false;
+		exportOptions.transparency = true;
+		exportOptions.interlaced = false;
+		app.activeDocument.exportDocument(
+			saveFile,
+			ExportType.SAVEFORWEB,
+			exportOptions
+		);
+	}
+
+	/**
+	 * Extrae las categorías a las que pertenece una capa. Las categorías están definidas en el nombre de la capa, con el formato:
+	 * <nombre arbitrario>#<título categoría 1>:<valor categoría 1>|<título categoría 2>:<valor categoría 2>|...
+	 * Añade el resultado a un objeto en la siguiente forma:
+	 * {
+	 *     <título categoría 1>: <valor categoría 1>,
+	 *     <título categoría 2>: <valor categoría 2>
+	 * }
+	 * @param {String} layerName Nombre de la capa, con el formato previsto.
+	 * @param {Object} cats Objeto al que se añadirán las categorías.
+	 */
+	function extractCats(layerName) {
+		var cats = {};
+		var nameCats = layerName.split("#").pop().split("|");
+		for (var i = 0; i < nameCats.length; i++) {
+			var nameCat = nameCats[i];
+			var nameCatParts = nameCat.split(":");
+			cats[nameCatParts[0]] = nameCatParts[1];
+
+		}
+		
+		return cats;
+	}
+
 
 	// --------------------------------------------
 
@@ -22,13 +71,12 @@ function main() {
 	//   "You are about to use the Ratascript art generator. Are you sure you want to continue?"
 	// );
 
-	//var name = prompt("What is the name of your collection?", "My collection");
-	var name = "My collection";
+	//var name = prompt("What is the name of your collection?", "my-collection");
+	var collectionName = "ratas";
 
-	$.writeln("Generando ratas: " + name);
+	$.writeln("Generando ratas: " + collectionName);
 
 	var groups = app.activeDocument.layerSets;
-	resetLayers(groups);
 
 	// Un array en el que cada posición indica la capa iterada dentro de cada grupo.
 	// Se inicializa con todas las posiciones a 0.
@@ -47,17 +95,21 @@ function main() {
 			}
 		},
 
-		incrementGroup: function(g) {
-			if (g < 0) {
+		getCurrentLayer: function(groupIndex) {
+			return this.groupStates[groupIndex].currentLayer;
+		},
+
+		incrementGroup: function(groupIndex) {
+			if (groupIndex < 0) {
 				return false;
 			} 
 
-			if (this.groupStates[g].currentLayer >= this.groupStates[g].numLayers - 1) {
-				this.groupStates[g].currentLayer = 0;
-				return this.incrementGroup(g - 1);
+			if (this.groupStates[groupIndex].currentLayer >= this.groupStates[groupIndex].numLayers - 1) {
+				this.groupStates[groupIndex].currentLayer = 0;
+				return this.incrementGroup(groupIndex - 1);
 			} 
 
-			this.groupStates[g].currentLayer++;
+			this.groupStates[groupIndex].currentLayer++;
 			return true;
 		},
 
@@ -82,50 +134,75 @@ function main() {
 
 	layerCounter.init(groups);
 
-	var securityCounter = 0;
+	var iterationCounter = 0;
+	var imageCounter = 0;
 
+	// Cada iteración genera una imagen.
 	do {
+		$.writeln("----------------------");
+		$.writeln("Iniciando nueva imagen");
 
-		if (securityCounter++ > MAX_ITERATIONS) {
+		var imageIsValid = true;
+
+		if (iterationCounter++ > MAX_ITERATIONS) {
 			break;
 		}
 
 		// Reinicia las categorías de esta imagen.
 		var cats = {};
 
+		// Hace visibles todos los grupos e invisibles todas las capas.
+		resetLayers(groups);
+
 		$.writeln(layerCounter.toString());
 
-		// // Itera los grupos para tomar una capa de cada grupo. 
-		// for (var g = 0; g < groups.length; g++) {
-		// 	var group = groups[g];
-		// 	$.writeln(group.name);
+		// Itera los grupos para activar una capa de cada grupo. 
+		for (var g = 0; g < groups.length; g++) {
+			var group = groups[g];
+			var layerIndex = layerCounter.getCurrentLayer(g)
+			var layer = group.layers[layerIndex];
+			layer.visible = true;
 
-		// 	// Incrementa la capa hasta llegara una válida.
-		// 	var layerFound = false;
-		// 	while (!layerFound) {
+			var layerCats = extractCats(layer.name);
 
-				
-		// 		var layer = group.layers[layerCounter[g]]
-		// 		if (true) { // TODO si la capa tiene las categorías válidas.
-		// 			layerFound = true;
-		// 			layer.visible = true
-		// 		}
-		// 	}
+			// Comprueba si las categorías de esta capa encajan con las existentes.
+			for (var catTitle in layerCats) {
+				var catValue = layerCats[catTitle];
+				if (catTitle in cats && cats[catTitle] != catValue) {
+					// La capa no es válida, así que la imagen tampoco.
+					imageIsValid = false;
+					break;
+				}
+			}
 
-		// 	// // Itera las capas del grupo. Debe hacer visible una sola imagen de cada grupo.
-		// 	// for (var l = 0; l < group.layers.length; l++) {
-		// 	// 	var layer = group.layers[l];
-		// 	// 	$.writeln("-" + layer.name);
+			// No sigue iterando los grupos.
+			if (!imageIsValid) {
+				break;
+			}
 
-		// 	// 	// Extrae las categorías (elementos del nombre, separados por "|" y con prefijo "<letra>:").
-		// 	// 	var cats = layer.name.split("#").pop().split("|");
-		// 	// 	$.writeln("#cats: " + cats.join(", "));
-		// 	// }
-		// }
+			// Si la imagen es válida, añade las nuevas categorías.
+			for (var catTitle in layerCats) {
+				if (!(catTitle in cats)) {
+					cats[catTitle] = layerCats[catTitle];
+				}
+			}
+
+		}
+
+		$.writeln("Categorías de la imagen: " + JSON.stringify(cats));
+		$.writeln("Imagen válida: " + (imageIsValid ? "sí" : "no"));
+
+		if (imageIsValid) {
+			imageCounter++;
+			var imageName = collectionName + imageCounter;
+
+			$.writeln("Guardando imagen: " + imageName);
+			saveImage(imageName);
+		}
 
 	} while (layerCounter.increment())
 
-	return "Finished: " + name;
+	return "Finished: " + collectionName;
 
 
 }
