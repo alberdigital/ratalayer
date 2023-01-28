@@ -2,7 +2,7 @@
 
 function main() {
 
-	var MAX_ITERATIONS = 100;
+	var MAX_ITERATIONS = 10000;
 
 	/**
 	 * Hace visibles todos los grupos y oculta todas las capas.
@@ -142,41 +142,36 @@ function main() {
 		$.writeln("----------------------");
 		$.writeln("Iniciando nueva imagen");
 
-		var imageIsValid = true;
+		var combinationIsValid = true;
 
 		if (iterationCounter++ > MAX_ITERATIONS) {
 			break;
 		}
 
-		// Reinicia las categorías de esta imagen.
-		var cats = {};
-
-		// Hace visibles todos los grupos e invisibles todas las capas.
-		resetLayers(groups);
-
 		$.writeln(layerCounter.toString());
 
-		// Itera los grupos para activar una capa de cada grupo. 
+		// Itera los grupos para comprobar si la combinación de capas es válida. Será válida si las categorías de todas las capas son compatibles.
+		var cats = {};
 		for (var g = 0; g < groups.length; g++) {
 			var group = groups[g];
+
+			// Selecciona la capa activa de este grupo.
 			var layerIndex = layerCounter.getCurrentLayer(g)
 			var layer = group.layers[layerIndex];
-			layer.visible = true;
-
+			
+			// Comprueba si las categorías de esta capa son compatibles con las de capas anteriores.
 			var layerCats = extractCats(layer.name);
-
-			// Comprueba si las categorías de esta capa encajan con las existentes.
 			for (var catTitle in layerCats) {
 				var catValue = layerCats[catTitle];
 				if (catTitle in cats && cats[catTitle] != catValue) {
 					// La capa no es válida, así que la imagen tampoco.
-					imageIsValid = false;
+					combinationIsValid = false;
 					break;
 				}
 			}
 
 			// No sigue iterando los grupos.
-			if (!imageIsValid) {
+			if (!combinationIsValid) {
 				break;
 			}
 
@@ -190,15 +185,27 @@ function main() {
 		}
 
 		$.writeln("Categorías de la imagen: " + JSON.stringify(cats));
-		$.writeln("Imagen válida: " + (imageIsValid ? "sí" : "no"));
+		$.writeln("Imagen válida: " + (combinationIsValid ? "sí" : "no"));
 
-		if (imageIsValid) {
-			imageCounter++;
-			var imageName = collectionName + imageCounter;
-
-			$.writeln("Guardando imagen: " + imageName);
-			saveImage(imageName);
+		if (!combinationIsValid) {
+			continue;
 		}
+		
+		// Resetea los grupos e itera activar solo la capa activa de cada grupo. 
+		resetLayers(groups);
+		for (var g = 0; g < groups.length; g++) {
+			var group = groups[g];
+			var layerIndex = layerCounter.getCurrentLayer(g)
+			var layer = group.layers[layerIndex];
+			layer.visible = true;
+		}
+		
+		imageCounter++;
+		var imageName = collectionName + imageCounter;
+
+		$.writeln("Guardando imagen: " + imageName);
+		saveImage(imageName);
+		
 
 	} while (layerCounter.increment())
 
