@@ -64,6 +64,17 @@ function main() {
 		return cats;
 	}
 
+	function extractBracketsContent(str) {
+		var result = str.match(/\[(.*?)\]/);
+		if (result) {
+			// Devolver el texto entre corchetes
+			return result[1];
+		} else {
+			// Si no se encuentra texto entre corchetes, devolver null
+			return null;
+		}
+	}
+
 
 	// --------------------------------------------
 	
@@ -78,10 +89,23 @@ function main() {
 		init: function(_groups) {
 			this.numGroups = _groups.length;
 			for (var g = 0; g < this.numGroups; g++) {
+				var group = _groups[g];
+
+				// Extrae el peso de cada capa.
+				var layerWeights = [];
+				for (var l = 0; l < group.layers.length; l++) {
+					var layer = group.layers[l];
+					var layerName = layer.name;
+					var weightStr = extractBracketsContent(layerName);
+					var weight = weightStr == null ? 1 : parseInt(weightStr);
+					layerWeights.push(weight);
+				}
+
 				this.groupStates[g] = {
 					groupName: _groups[g].name,
 					currentLayer: 0,
-					numLayers: _groups[g].layers.length
+					numLayers: _groups[g].layers.length,
+					layerWeights: layerWeights
 				}
 			}
 		},
@@ -113,10 +137,31 @@ function main() {
 		},
 
 		setRandom: function() {
+
 			for (var g = 0; g < this.numGroups; g++) {
 				var groupState = this.groupStates[g];
-				var newLayer = Math.floor(Math.random() * groupState.numLayers)
-				this.groupStates[g].currentLayer = newLayer;
+				// var newLayer = Math.floor(Math.random() * groupState.numLayers)
+				// this.groupStates[g].currentLayer = newLayer;
+
+				// Obtén el total de pesos.
+				var totalWeight = 0;
+				for (var l = 0; l < groupState.numLayers; l++) {
+					totalWeight += groupState.layerWeights[l];
+				}
+
+				// Generar un número aleatorio entre 0 y el total de pesos
+				var randNum = Math.random() * totalWeight;
+
+				// Recorrer la lista de objetos
+				var accumulated = 0;
+				for (var l = 0; l < groupState.numLayers; l++) {
+					accumulated += groupState.layerWeights[l];
+					if (accumulated >= randNum) {
+						groupState.currentLayer = l;
+						break;
+					}
+				}
+
 			}
 		},
 
@@ -166,7 +211,7 @@ function main() {
 	// Cada iteración genera una imagen.
 	do {
 		$.writeln("----------------------");
-		$.writeln("Iniciando nueva imagen");
+		$.writeln("Nueva combinación");
 
 		var combinationIsValid = true;
 
