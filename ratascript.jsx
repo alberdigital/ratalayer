@@ -66,21 +66,12 @@ function main() {
 
 
 	// --------------------------------------------
-
-	// var continueConfirmation = confirm(
-	//   "You are about to use the Ratascript art generator. Are you sure you want to continue?"
-	// );
-
-	//var name = prompt("What is the name of your collection?", "my-collection");
-	var collectionName = "ratas";
-
-	$.writeln("Generando ratas: " + collectionName);
-
-	var groups = app.activeDocument.layerSets;
-
-	// Un array en el que cada posición indica la capa iterada dentro de cada grupo.
+	
+	// COMBINATION COUNTER
+	// -------------------
+	// Gestiona un array en el que cada posición indica la capa iterada dentro de cada grupo.
 	// Se inicializa con todas las posiciones a 0.
-	var layerCounter = {
+	var combinationCounter = {
 		numGroups: 0,
 		groupStates: [],
 
@@ -121,6 +112,14 @@ function main() {
 			return this.incrementGroup(this.numGroups - 1);
 		},
 
+		setRandom: function() {
+			for (var g = 0; g < this.numGroups; g++) {
+				var groupState = this.groupStates[g];
+				var newLayer = Math.floor(Math.random() * groupState.numLayers)
+				this.groupStates[g].currentLayer = newLayer;
+			}
+		},
+
 		toString: function() {
 			var groupStrs = [];
 			for (var g = 0; g < this.groupStates.length; g++) {
@@ -132,7 +131,34 @@ function main() {
 
 	}
 
-	layerCounter.init(groups);
+	// ============================================
+
+	// var continueConfirmation = confirm(
+	//   "You are about to use the Ratascript art generator. Are you sure you want to continue?"
+	// );
+
+	// var name = prompt("What is the name of your collection?", "my-collection");
+	var collectionName = "ratas";
+
+	var doCompleteTraversalStr = prompt("Do you want to do a complete traversal (s/n)?", "n");
+	if (doCompleteTraversalStr == null) {
+		return 0;
+	}
+	var doCompleteTraversal = doCompleteTraversalStr.toUpperCase() == "S";
+
+	var numberOfImagesRequired = 0;
+	if (!doCompleteTraversal) {
+		numberOfImagesRequired = prompt("How many random images do you want to generate?", 10);
+		if (numberOfImagesRequired == null) {
+			return 0;
+		}
+	}
+
+	$.writeln("Generando ratas: " + collectionName);
+
+	var groups = app.activeDocument.layerSets;
+
+	combinationCounter.init(groups);
 
 	var iterationCounter = 0;
 	var imageCounter = 0;
@@ -148,7 +174,7 @@ function main() {
 			break;
 		}
 
-		$.writeln(layerCounter.toString());
+		$.writeln(combinationCounter.toString());
 
 		// Itera los grupos para comprobar si la combinación de capas es válida. Será válida si las categorías de todas las capas son compatibles.
 		var cats = {};
@@ -156,7 +182,7 @@ function main() {
 			var group = groups[g];
 
 			// Selecciona la capa activa de este grupo.
-			var layerIndex = layerCounter.getCurrentLayer(g)
+			var layerIndex = combinationCounter.getCurrentLayer(g)
 			var layer = group.layers[layerIndex];
 			
 			// Comprueba si las categorías de esta capa son compatibles con las de capas anteriores.
@@ -187,27 +213,34 @@ function main() {
 		$.writeln("Categorías de la imagen: " + JSON.stringify(cats));
 		$.writeln("Imagen válida: " + (combinationIsValid ? "sí" : "no"));
 
-		if (!combinationIsValid) {
-			continue;
+		if (combinationIsValid) {
+
+			// Resetea los grupos e itera activar solo la capa activa de cada grupo. 
+			resetLayers(groups);
+			for (var g = 0; g < groups.length; g++) {
+				var group = groups[g];
+				var layerIndex = combinationCounter.getCurrentLayer(g)
+				var layer = group.layers[layerIndex];
+				layer.visible = true;
+			}
+			
+			imageCounter++;
+			var imageName = collectionName + imageCounter;
+
+			$.writeln("Guardando imagen: " + imageName);
+			saveImage(imageName);
 		}
 		
-		// Resetea los grupos e itera activar solo la capa activa de cada grupo. 
-		resetLayers(groups);
-		for (var g = 0; g < groups.length; g++) {
-			var group = groups[g];
-			var layerIndex = layerCounter.getCurrentLayer(g)
-			var layer = group.layers[layerIndex];
-			layer.visible = true;
+		// Siguiente combinación.
+		var finished = false;
+		if (doCompleteTraversal) {
+			finished = !combinationCounter.increment();
+		} else {
+			combinationCounter.setRandom();
+			finished = imageCounter == numberOfImagesRequired;
 		}
-		
-		imageCounter++;
-		var imageName = collectionName + imageCounter;
 
-		$.writeln("Guardando imagen: " + imageName);
-		saveImage(imageName);
-		
-
-	} while (layerCounter.increment())
+	} while (!finished)
 
 	return "Finished: " + collectionName;
 
