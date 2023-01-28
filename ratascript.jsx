@@ -3,6 +3,7 @@
 function main() {
 
 	var MAX_ITERATIONS = null;
+	var MAX_RANDOM_ATTEMPTS = 500;
 
 	/**
 	 * Hace visibles todos los grupos y oculta todas las capas.
@@ -26,8 +27,8 @@ function main() {
 		return folder;
 	}
 
-	function saveImage(_name) {
-		var saveFile = new File(getFolder("build/images") + "/" + _name + ".png");
+	function saveImage(_collectionName, _fileName) {
+		var saveFile = new File(getFolder("build/" + _collectionName + "/images") + "/" + _fileName + ".png");
 		exportOptions = new ExportOptionsSaveForWeb();
 		exportOptions.format = SaveDocumentType.PNG;
 		exportOptions.PNG24 = false;
@@ -41,7 +42,7 @@ function main() {
 	}
 
 	function saveMetadata(metadata) {
-		var file = new File(getFolder("build/metadata") + "/" + metadata.fileName + ".json");
+		var file = new File(getFolder("build/" + metadata.collectionName + "/metadata") + "/" + metadata.fileName + ".json");
 		file.open("w");
 		file.write(JSON.stringify(metadata));
 		file.close();
@@ -82,6 +83,15 @@ function main() {
 		}
 	}
 
+	function existsInArray(array, str) {
+		for (var i = 0; i < array.length; i++) {
+			if (array[i] == str) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 
 	// --------------------------------------------
 	
@@ -97,8 +107,10 @@ function main() {
 	var combinationCounter = {
 		numGroups: 0,
 		groupStates: [],
+		randomGeneratedLog: [],
 
 		init: function(_groups) {
+			this.combinationLog = [];
 			this.numGroups = _groups.length;
 			for (var g = 0; g < this.numGroups; g++) {
 				var group = _groups[g];
@@ -177,6 +189,29 @@ function main() {
 				}
 
 			}
+
+		},
+
+		setRandomNoRepeat: function() {
+			var attempts = 0;
+
+			do {
+				this.setRandom();
+				attempts++;
+
+				// Anota en un log para evitar repetir.
+				var newCombinationFound = false;
+				var hash = this.toString();
+				if (!existsInArray(this.randomGeneratedLog, hash)) {
+					newCombinationFound = true;
+					this.randomGeneratedLog.push(hash);
+				}
+			} while (!newCombinationFound && attempts < MAX_RANDOM_ATTEMPTS);
+
+			if (!newCombinationFound && attempts >= MAX_RANDOM_ATTEMPTS) {
+				return false;
+			}
+			return true;
 		},
 
 		toString: function() {
@@ -193,6 +228,9 @@ function main() {
 	// ============================================
 
 	var collectionName = prompt("What is the name of your collection?", "collection");
+	if (collectionName == null) {
+		return 0;
+	}
 
 	var doCompleteTraversalStr = prompt("Do you want to do a complete traversal (s/n)?", "n");
 	if (doCompleteTraversalStr == null) {
@@ -213,6 +251,9 @@ function main() {
 	var groups = app.activeDocument.layerSets;
 
 	combinationCounter.init(groups);
+	if (!doCompleteTraversal) {
+		combinationCounter.setRandomNoRepeat();
+	}
 
 	var iterationCounter = 0;
 	var imageCounter = 0;
@@ -282,8 +323,8 @@ function main() {
 
 			// Guarda la imagen.
 			var fileName = collectionName + imageCounter;
-			$.writeln("Guardando imagen: " + fileName);
-			saveImage(fileName);
+			$.writeln("Saving image: " + fileName);
+			saveImage(collectionName, fileName);
 
 			// Genera metadatos.
 			var layersNames = {};
@@ -295,6 +336,7 @@ function main() {
 			}
 
 			var metadata = {
+				collectionName: collectionName,
 				fileName: fileName,
 				layers: layersNames,
 				categories: cats
@@ -308,8 +350,11 @@ function main() {
 		if (doCompleteTraversal) {
 			finished = !combinationCounter.increment();
 		} else {
-			combinationCounter.setRandom();
-			finished = imageCounter == numberOfImagesRequired;
+			var randomCombinationFound = combinationCounter.setRandomNoRepeat();
+			if (!randomCombinationFound) {
+				alert("Cannot find a new combination after " + MAX_RANDOM_ATTEMPTS + " attempts.");
+			}
+			finished = !randomCombinationFound || imageCounter == numberOfImagesRequired;
 		}
 
 	} while (!finished)
