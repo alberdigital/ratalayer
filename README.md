@@ -2,7 +2,7 @@
 
 Script para generar una colección de imágenes a partir de las capas de un fichero PSD.
 
-Necesitas tener instalado Photoshop 24.1.1 o superior (probablemente funcione en versiones más antiguas)
+Necesitas tener instalado Photoshop 24.1.1 o superior (probablemente funcione en versiones más antiguas).
 
 Para ejecutarlo, con la imagen abierta en Photoshop:
 
