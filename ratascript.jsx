@@ -1,9 +1,12 @@
 //@include "./lib/json2.js"
+//@include "./ArrayExt.jsx"
+//@include "./LayerName.jsx"
+//@include "./FileManager.jsx"
+//@include "./CombinationCounter.jsx"
 
-function main() {
+(function() {
 
 	var MAX_ITERATIONS = null;
-	var MAX_RANDOM_ATTEMPTS = 500;
 
 	/**
 	 * Hace visibles todos los grupos y oculta todas las capas.
@@ -18,350 +21,148 @@ function main() {
 		}
 	}
 
-	function getFolder(_name) {
-		var path = app.activeDocument.path;
-		var folder = new Folder(path + "/" + _name);
-		if (!folder.exists) {
-			folder.create();
+	function main() {
+
+		var fileManager = new FileManager(app.activeDocument.path);
+
+		var groups = app.activeDocument.layerSets;
+
+		var combinationCounter = new CombinationCounter();
+		combinationCounter.init(groups);
+
+		var collectionName = prompt("What is the name of your collection?", "collection");
+		if (collectionName == null) {
+			return 0;
 		}
-		return folder;
-	}
 
-	function saveImage(_collectionName, _fileName) {
-		var saveFile = new File(getFolder("build/" + _collectionName + "/images") + "/" + _fileName + ".png");
-		exportOptions = new ExportOptionsSaveForWeb();
-		exportOptions.format = SaveDocumentType.PNG;
-		exportOptions.PNG24 = false;
-		exportOptions.transparency = true;
-		exportOptions.interlaced = false;
-		app.activeDocument.exportDocument(
-			saveFile,
-			ExportType.SAVEFORWEB,
-			exportOptions
-		);
-	}
-
-	function saveMetadata(metadata) {
-		var file = new File(getFolder("build/" + metadata.collectionName + "/metadata") + "/" + metadata.fileName + ".json");
-		file.open("w");
-		file.write(JSON.stringify(metadata));
-		file.close();
-	  }
-
-	/**
-	 * Extrae las categorías a las que pertenece una capa. Las categorías están definidas en el nombre de la capa, con el formato:
-	 * <nombre arbitrario>#<título categoría 1>:<valor categoría 1>|<título categoría 2>:<valor categoría 2>|...
-	 * Añade el resultado a un objeto en la siguiente forma:
-	 * {
-	 *     <título categoría 1>: <valor categoría 1>,
-	 *     <título categoría 2>: <valor categoría 2>
-	 * }
-	 * @param {String} layerName Nombre de la capa, con el formato previsto.
-	 * @param {Object} cats Objeto al que se añadirán las categorías.
-	 */
-	function extractCats(layerName) {
-		var cats = {};
-		var nameCats = layerName.split("#").pop().split("|");
-		for (var i = 0; i < nameCats.length; i++) {
-			var nameCat = nameCats[i];
-			var nameCatParts = nameCat.split(":");
-			cats[nameCatParts[0]] = nameCatParts[1];
-
+		var combinationNum = combinationCounter.countCombinations();
+		var doCompleteTraversalStr = prompt("There are " + combinationNum + " combinations. Do you want to do a complete traversal (s/n)?", "n");
+		if (doCompleteTraversalStr == null) {
+			return 0;
 		}
-		
-		return cats;
-	}
+		var doCompleteTraversal = doCompleteTraversalStr.toUpperCase() == "S";
 
-	function extractBracketsContent(str) {
-		var result = str.match(/\[(.*?)\]/);
-		if (result) {
-			// Devolver el texto entre corchetes
-			return result[1];
-		} else {
-			// Si no se encuentra texto entre corchetes, devolver null
-			return null;
-		}
-	}
-
-	function existsInArray(array, str) {
-		for (var i = 0; i < array.length; i++) {
-			if (array[i] == str) {
-				return true;
+		var numberOfImagesRequired = 0;
+		if (!doCompleteTraversal) {
+			numberOfImagesRequired = prompt("How many random images do you want to generate?", 10);
+			if (numberOfImagesRequired == null) {
+				return 0;
 			}
 		}
-		return false;
-	}
 
-
-	// --------------------------------------------
+		$.writeln("Building collection: " + collectionName);
 	
-	// COMBINATION COUNTER
-	// -------------------
-	
-	/**
-	 * Gestiona un array en el que cada posición indica la capa iterada dentro de cada grupo.
-	 * Se inicializa con todas las posiciones a 0. Dispone de dos métodos para cambiar las capas activas: increment() y setRandom().
-	 * increment() permite recorrer todas las posibles combinaciones, incrementando las capas de una en una para todos los grupos.
-	 * setRandom() permite establecer una capa activa aleatoria (con pesos) para cada grupo.
-	 */
-	var combinationCounter = {
-		numGroups: 0,
-		groupStates: [],
-		randomGeneratedLog: [],
+		if (!doCompleteTraversal) {
+			combinationCounter.setRandomNoRepeat();
+		}
 
-		init: function(_groups) {
-			this.combinationLog = [];
-			this.numGroups = _groups.length;
-			for (var g = 0; g < this.numGroups; g++) {
-				var group = _groups[g];
+		var iterationCounter = 0;
+		var imageCounter = 0;
 
-				// Extrae el peso de cada capa.
-				var layerWeights = [];
-				for (var l = 0; l < group.layers.length; l++) {
-					var layer = group.layers[l];
-					var layerName = layer.name;
-					var weightStr = extractBracketsContent(layerName);
-					var weight = weightStr == null ? 1 : parseInt(weightStr);
-					layerWeights.push(weight);
-				}
+		// Cada iteración genera una imagen.
+		do {
+			$.writeln("----------------------");
+			$.writeln("New combination");
 
-				this.groupStates[g] = {
-					groupName: _groups[g].name,
-					currentLayer: 0,
-					numLayers: _groups[g].layers.length,
-					layerWeights: layerWeights
-				}
+			var combinationIsValid = true;
+
+			if (MAX_ITERATIONS != null && iterationCounter++ > MAX_ITERATIONS) {
+				break;
 			}
-		},
 
-		getCurrentLayer: function(groupIndex) {
-			return this.groupStates[groupIndex].currentLayer;
-		},
+			$.writeln(combinationCounter.toString());
 
-		incrementGroup: function(groupIndex) {
-			if (groupIndex < 0) {
-				return false;
-			} 
+			// Itera los grupos para comprobar si la combinación de capas es válida. Será válida si las categorías de todas las capas son compatibles.
+			var cats = {};
+			for (var g = 0; g < groups.length; g++) {
+				var group = groups[g];
 
-			if (this.groupStates[groupIndex].currentLayer >= this.groupStates[groupIndex].numLayers - 1) {
-				this.groupStates[groupIndex].currentLayer = 0;
-				return this.incrementGroup(groupIndex - 1);
-			} 
-
-			this.groupStates[groupIndex].currentLayer++;
-			return true;
-		},
-
-		/**
-		 * Incrementa el contador de capas mientras haya capas disponibles.
-		 * @returns true si pudo incrementar, false en otro caso.
-		 */
-		increment: function() {
-			return this.incrementGroup(this.numGroups - 1);
-		},
-
-		/**
-		 * Establece una capa activa al azar en cada grupo, respetando los pesos indicados en el nombre
-		 * de cada capa (entre corchetes).
-		 */
-		setRandom: function() {
-
-			for (var g = 0; g < this.numGroups; g++) {
-				var groupState = this.groupStates[g];
-
-				// Obtén el total de pesos.
-				var totalWeight = 0;
-				for (var l = 0; l < groupState.numLayers; l++) {
-					totalWeight += groupState.layerWeights[l];
-				}
-
-				// Generar un número aleatorio entre 0 y el total de pesos
-				var randNum = Math.random() * totalWeight;
-
-				// Recorrer la lista de objetos
-				var accumulated = 0;
-				for (var l = 0; l < groupState.numLayers; l++) {
-					accumulated += groupState.layerWeights[l];
-					if (accumulated >= randNum) {
-						groupState.currentLayer = l;
+				// Selecciona la capa activa de este grupo.
+				var layerIndex = combinationCounter.getCurrentLayer(g)
+				var layer = group.layers[layerIndex];
+				
+				// Comprueba si las categorías de esta capa son compatibles con las de capas anteriores.
+				var layerCats = new LayerName(layer.name).extractCats();
+				for (var catTitle in layerCats) {
+					var catValue = layerCats[catTitle];
+					if (catTitle in cats && cats[catTitle] != catValue) {
+						// La capa no es válida, así que la imagen tampoco.
+						combinationIsValid = false;
 						break;
+					}
+				}
+
+				// No sigue iterando los grupos.
+				if (!combinationIsValid) {
+					break;
+				}
+
+				// Si la imagen es válida, añade las nuevas categorías.
+				for (var catTitle in layerCats) {
+					if (!(catTitle in cats)) {
+						cats[catTitle] = layerCats[catTitle];
 					}
 				}
 
 			}
 
-		},
+			$.writeln("Combination categories: " + JSON.stringify(cats));
+			$.writeln("Valid image? " + (combinationIsValid ? "yes" : "no"));
 
-		setRandomNoRepeat: function() {
-			var attempts = 0;
+			if (combinationIsValid) {
 
-			do {
-				this.setRandom();
-				attempts++;
-
-				// Anota en un log para evitar repetir.
-				var newCombinationFound = false;
-				var hash = this.toString();
-				if (!existsInArray(this.randomGeneratedLog, hash)) {
-					newCombinationFound = true;
-					this.randomGeneratedLog.push(hash);
+				// Resetea los grupos e itera para activar solo la capa activa de cada grupo. 
+				resetLayers(groups);
+				for (var g = 0; g < groups.length; g++) {
+					var group = groups[g];
+					var layerIndex = combinationCounter.getCurrentLayer(g)
+					var layer = group.layers[layerIndex];
+					layer.visible = true;
 				}
-			} while (!newCombinationFound && attempts < MAX_RANDOM_ATTEMPTS);
+				
+				imageCounter++;
 
-			if (!newCombinationFound && attempts >= MAX_RANDOM_ATTEMPTS) {
-				return false;
-			}
-			return true;
-		},
+				// Guarda la imagen.
+				var fileName = collectionName + imageCounter;
+				$.writeln("Saving image: " + fileName);
+				fileManager.saveImage(collectionName, fileName);
 
-		toString: function() {
-			var groupStrs = [];
-			for (var g = 0; g < this.groupStates.length; g++) {
-				var groupState = this.groupStates[g];
-				groupStrs.push(groupState.groupName + ": " + groupState.currentLayer + "/" + groupState.numLayers);
-			}
-			return groupStrs.join(", ");
-		}
-
-	}
-
-	// ============================================
-
-	var collectionName = prompt("What is the name of your collection?", "collection");
-	if (collectionName == null) {
-		return 0;
-	}
-
-	var doCompleteTraversalStr = prompt("Do you want to do a complete traversal (s/n)?", "n");
-	if (doCompleteTraversalStr == null) {
-		return 0;
-	}
-	var doCompleteTraversal = doCompleteTraversalStr.toUpperCase() == "S";
-
-	var numberOfImagesRequired = 0;
-	if (!doCompleteTraversal) {
-		numberOfImagesRequired = prompt("How many random images do you want to generate?", 10);
-		if (numberOfImagesRequired == null) {
-			return 0;
-		}
-	}
-
-	$.writeln("Generando ratas: " + collectionName);
-
-	var groups = app.activeDocument.layerSets;
-
-	combinationCounter.init(groups);
-	if (!doCompleteTraversal) {
-		combinationCounter.setRandomNoRepeat();
-	}
-
-	var iterationCounter = 0;
-	var imageCounter = 0;
-
-	// Cada iteración genera una imagen.
-	do {
-		$.writeln("----------------------");
-		$.writeln("Nueva combinación");
-
-		var combinationIsValid = true;
-
-		if (MAX_ITERATIONS != null && iterationCounter++ > MAX_ITERATIONS) {
-			break;
-		}
-
-		$.writeln(combinationCounter.toString());
-
-		// Itera los grupos para comprobar si la combinación de capas es válida. Será válida si las categorías de todas las capas son compatibles.
-		var cats = {};
-		for (var g = 0; g < groups.length; g++) {
-			var group = groups[g];
-
-			// Selecciona la capa activa de este grupo.
-			var layerIndex = combinationCounter.getCurrentLayer(g)
-			var layer = group.layers[layerIndex];
-			
-			// Comprueba si las categorías de esta capa son compatibles con las de capas anteriores.
-			var layerCats = extractCats(layer.name);
-			for (var catTitle in layerCats) {
-				var catValue = layerCats[catTitle];
-				if (catTitle in cats && cats[catTitle] != catValue) {
-					// La capa no es válida, así que la imagen tampoco.
-					combinationIsValid = false;
-					break;
+				// Genera metadatos.
+				var layersNames = {};
+				for (var g = 0; g < groups.length; g++) {
+					var group = groups[g];
+					var layerIndex = combinationCounter.getCurrentLayer(g)
+					var layer = group.layers[layerIndex];
+					layersNames[group.name] = layer.name
 				}
-			}
 
-			// No sigue iterando los grupos.
-			if (!combinationIsValid) {
-				break;
-			}
+				var metadata = {
+					collectionName: collectionName,
+					fileName: fileName,
+					layers: layersNames,
+					categories: cats
+				};
+				fileManager.saveMetadata(metadata);
 
-			// Si la imagen es válida, añade las nuevas categorías.
-			for (var catTitle in layerCats) {
-				if (!(catTitle in cats)) {
-					cats[catTitle] = layerCats[catTitle];
-				}
-			}
-
-		}
-
-		$.writeln("Categorías de la imagen: " + JSON.stringify(cats));
-		$.writeln("Imagen válida: " + (combinationIsValid ? "sí" : "no"));
-
-		if (combinationIsValid) {
-
-			// Resetea los grupos e itera para activar solo la capa activa de cada grupo. 
-			resetLayers(groups);
-			for (var g = 0; g < groups.length; g++) {
-				var group = groups[g];
-				var layerIndex = combinationCounter.getCurrentLayer(g)
-				var layer = group.layers[layerIndex];
-				layer.visible = true;
 			}
 			
-			imageCounter++;
-
-			// Guarda la imagen.
-			var fileName = collectionName + imageCounter;
-			$.writeln("Saving image: " + fileName);
-			saveImage(collectionName, fileName);
-
-			// Genera metadatos.
-			var layersNames = {};
-			for (var g = 0; g < groups.length; g++) {
-				var group = groups[g];
-				var layerIndex = combinationCounter.getCurrentLayer(g)
-				var layer = group.layers[layerIndex];
-				layersNames[group.name] = layer.name
+			// Siguiente combinación.
+			var finished = false;
+			if (doCompleteTraversal) {
+				finished = !combinationCounter.increment();
+			} else {
+				var randomCombinationFound = combinationCounter.setRandomNoRepeat();
+				if (!randomCombinationFound) {
+					alert("Cannot find a new combination after " + combinationCounter.maxRandomAttempts + " attempts.");
+				}
+				finished = !randomCombinationFound || imageCounter == numberOfImagesRequired;
 			}
 
-			var metadata = {
-				collectionName: collectionName,
-				fileName: fileName,
-				layers: layersNames,
-				categories: cats
-			};
-			saveMetadata(metadata);
+		} while (!finished)
 
-		}
-		
-		// Siguiente combinación.
-		var finished = false;
-		if (doCompleteTraversal) {
-			finished = !combinationCounter.increment();
-		} else {
-			var randomCombinationFound = combinationCounter.setRandomNoRepeat();
-			if (!randomCombinationFound) {
-				alert("Cannot find a new combination after " + MAX_RANDOM_ATTEMPTS + " attempts.");
-			}
-			finished = !randomCombinationFound || imageCounter == numberOfImagesRequired;
-		}
+		return "Finished: " + collectionName;
+	}
 
-	} while (!finished)
+	return main();
 
-	return "Finished: " + collectionName;
-
-
-}
-
-main();
+})();
