@@ -64,47 +64,15 @@
 			$.writeln("----------------------");
 			$.writeln("New combination");
 
-			var combinationIsValid = true;
-
 			if (MAX_ITERATIONS != null && iterationCounter++ > MAX_ITERATIONS) {
 				break;
 			}
 
 			$.writeln(combinationCounter.toString());
 
-			// Itera los grupos para comprobar si la combinación de capas es válida. Será válida si las categorías de todas las capas son compatibles.
-			var cats = {};
-			for (var g = 0; g < groups.length; g++) {
-				var group = groups[g];
-
-				// Selecciona la capa activa de este grupo.
-				var layerIndex = combinationCounter.getCurrentLayer(g)
-				var layer = group.layers[layerIndex];
-				
-				// Comprueba si las categorías de esta capa son compatibles con las de capas anteriores.
-				var layerCats = new LayerName(layer.name).extractCats();
-				for (var catTitle in layerCats) {
-					var catValue = layerCats[catTitle];
-					if (catTitle in cats && cats[catTitle] != catValue) {
-						// La capa no es válida, así que la imagen tampoco.
-						combinationIsValid = false;
-						break;
-					}
-				}
-
-				// No sigue iterando los grupos.
-				if (!combinationIsValid) {
-					break;
-				}
-
-				// Si la imagen es válida, añade las nuevas categorías.
-				for (var catTitle in layerCats) {
-					if (!(catTitle in cats)) {
-						cats[catTitle] = layerCats[catTitle];
-					}
-				}
-
-			}
+			var categoryCompatibilityCheckResult = combinationCounter.checkCategoryCompatibility();
+			var cats = categoryCompatibilityCheckResult.cats;
+			var combinationIsValid = categoryCompatibilityCheckResult.valid;
 
 			$.writeln("Combination categories: " + JSON.stringify(cats));
 			$.writeln("Valid image? " + (combinationIsValid ? "yes" : "no"));

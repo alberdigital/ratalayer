@@ -19,21 +19,27 @@ CombinationCounter.prototype = {
 		for (var g = 0; g < this.numGroups; g++) {
 			var psGroup = psGroups[g];
 
-			// Extrae el peso de cada capa.
-			var layerWeights = [];
+			var layers = [];
 			for (var l = 0; l < psGroup.layers.length; l++) {
-				var layer = psGroup.layers[l];
-				var layerName = layer.name;
+
+				var psLayer = psGroup.layers[l];
+				var layerName = psLayer.name;
+
+				// Extrae el peso de cada capa.
 				var weightStr = new LayerName(layerName).extractBracketsContent(layerName);
 				var weight = weightStr == null ? 1 : parseInt(weightStr);
-				layerWeights.push(weight);
+
+				layers.push({
+					layerName: layerName,
+					weight: weight,
+					cats: new LayerName(layerName).extractCats()
+				});
 			}
 
 			this.groups[g] = {
 				groupName: psGroups[g].name,
 				currentLayer: 0,
-				numLayers: psGroups[g].layers.length,
-				layerWeights: layerWeights
+				layers: layers
 			}
 		}
 	},
@@ -44,10 +50,63 @@ CombinationCounter.prototype = {
 		}
 	},
 
+	/**
+	 * Itera los grupos para comprobar si la combinación de capas es válida. Será válida si las categorías de todas las capas son compatibles.
+	 * @returns Un objeto con la siguiente estructura:
+	 *    { 
+	 *       valid: <true o false dependiendo de si las categorías de la combinación son compatibles>
+	 *       cats: <Si la combinación es válida, la lista de categorías y sus valores. null si las categorías de la combinación no son compatibles>
+	 *    }
+	 */
+	checkCategoryCompatibility: function() {
+		var combinationIsValid = true;
+		var cats = {};
+		for (var g = 0; g < this.groups.length; g++) {
+			var group = this.groups[g];
+
+			// Selecciona la capa activa de este grupo.
+			var layer = group.layers[group.currentLayer];
+			
+			// Comprueba si las categorías de esta capa son compatibles con las de capas anteriores.
+			for (var catTitle in layer.cats) {
+				var catValue = layer.cats[catTitle];
+				if (catTitle in cats && cats[catTitle] != catValue) {
+					// La capa no es válida, así que la combinación tampoco. Termina devolviendo null.
+					combinationIsValid = false;
+					break;
+				}
+			}
+
+			// No sigue iterando los grupos.
+			if (!combinationIsValid) {
+				break;
+			}
+
+			// Si la imagen es válida, añade las nuevas categorías.
+			for (var catTitle in layer.cats) {
+				if (!(catTitle in cats)) {
+					cats[catTitle] = layer.cats[catTitle];
+				}
+			}
+
+		}
+
+		return {
+			valid: combinationIsValid,
+			cats: combinationIsValid ? cats : null
+		};
+		
+	},
+
 	countCombinations: function() {
 		this.reset();
 		var count = 0;
-		while (this.increment()) count ++;
+		do {
+			if (this.checkCategoryCompatibility().valid) {
+				count++;
+			}
+		} while (this.increment());
+		
 		return count;
 	},
 
@@ -60,7 +119,7 @@ CombinationCounter.prototype = {
 			return false;
 		} 
 
-		if (this.groups[groupIndex].currentLayer >= this.groups[groupIndex].numLayers - 1) {
+		if (this.groups[groupIndex].currentLayer >= this.groups[groupIndex].layers.length - 1) {
 			this.groups[groupIndex].currentLayer = 0;
 			return this.incrementGroup(groupIndex - 1);
 		} 
@@ -88,8 +147,8 @@ CombinationCounter.prototype = {
 
 			// Obtén el total de pesos.
 			var totalWeight = 0;
-			for (var l = 0; l < group.numLayers; l++) {
-				totalWeight += group.layerWeights[l];
+			for (var l = 0; l < group.layers.length; l++) {
+				totalWeight += group.layers[l].weight;
 			}
 
 			// Generar un número aleatorio entre 0 y el total de pesos
@@ -97,8 +156,8 @@ CombinationCounter.prototype = {
 
 			// Recorrer la lista de objetos
 			var accumulated = 0;
-			for (var l = 0; l < group.numLayers; l++) {
-				accumulated += group.layerWeights[l];
+			for (var l = 0; l < group.layers.length; l++) {
+				accumulated += group.layers[l].weight;
 				if (accumulated >= randNum) {
 					group.currentLayer = l;
 					break;
@@ -132,8 +191,8 @@ CombinationCounter.prototype = {
 	toString: function() {
 		var groupStrs = [];
 		for (var g = 0; g < this.groups.length; g++) {
-			var groupState = this.groups[g];
-			groupStrs.push(groupState.groupName + ": " + groupState.currentLayer + "/" + groupState.numLayers);
+			var group = this.groups[g];
+			groupStrs.push(group.groupName + ": " + group.currentLayer + "/" + group.layers.length);
 		}
 		return groupStrs.join(", ");
 	}
