@@ -23,35 +23,56 @@
 
 	function main() {
 
-		var fileManager = new FileManager(app.activeDocument.path);
-
+		// Diálogo de entrada.
 		var groups = app.activeDocument.layerSets;
 
 		var combinationCounter = new CombinationCounter();
 		combinationCounter.init(groups);
 
-		var collectionName = prompt("What is the name of your collection?", "collection");
-		if (collectionName == null) {
-			return 0;
-		}
-
 		var combinationNum = combinationCounter.countCombinations();
-		var doCompleteTraversalStr = prompt("There are " + combinationNum + " combinations. Do you want to do a complete traversal (s/n)?", "n");
-		if (doCompleteTraversalStr == null) {
+
+		var w = new Window("dialog", "New collection");
+		w.alignChildren = "left";
+		w.add("statictext", undefined, "Collection name:");
+		var collectionNameInput = w.add("edittext", undefined, "my-collection");
+		w.add("statictext", undefined, "There are " + combinationNum + " combinations.");
+		w.radioPnl = w.add("panel", undefined, "Generation type");
+		w.radioPnl.alignChildren = "left";
+		var randomRadio = w.radioPnl.add("radiobutton", undefined, "Only some random images");
+		w.numImagesGroup = w.radioPnl.add("group");
+		w.numImagesGroup.orientation = "row";
+		w.numImagesGroup.add("statictext", undefined, "Num. images:");
+		var numImagesInput = w.numImagesGroup.add("edittext", undefined, "5");
+		var completeTravRadio = w.radioPnl.add("radiobutton", undefined, "Complete traversal");
+		randomRadio.value = true;
+		w.buttonGroup = w.add("group");
+		w.buttonGroup.orientation = "row";
+  		var okButton = w.buttonGroup.add("button", undefined, "Ok");
+  		var cancelButton = w.buttonGroup.add("button", undefined, "Cancel");
+
+		// Define the behavior of the buttons
+		var startGeneration = true;
+		cancelButton.onClick = function () {
+			$.writeln("Cancel Button Pressed");
+			w.close();
+			startGeneration = false;
+		}
+		w.show();
+
+		if (!startGeneration) {
 			return 0;
 		}
-		var doCompleteTraversal = doCompleteTraversalStr.toUpperCase() == "S";
 
-		var numberOfImagesRequired = 0;
-		if (!doCompleteTraversal) {
-			numberOfImagesRequired = prompt("How many random images do you want to generate?", 10);
-			if (numberOfImagesRequired == null) {
-				return 0;
-			}
-		}
+		var collectionName = collectionNameInput.text;
+		var doCompleteTraversal = completeTravRadio.value;
+		var numberOfImagesRequired = numImagesInput.text;
 
-		$.writeln("Building collection: " + collectionName);
+		$.writeln("Building collection: " + collectionName + " | complete traversal: " + (doCompleteTraversal ? "yes" : "no") + " | num. images: " + numberOfImagesRequired);
 	
+		// Inicialización.
+
+		var fileManager = new FileManager(app.activeDocument.path);
+
 		if (!doCompleteTraversal) {
 			combinationCounter.setRandomNoRepeat();
 		}
