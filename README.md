@@ -16,11 +16,15 @@ Elige el nombre de la colección y el tipo de generación:
 - Only some random images: generará el número de imágenes elegido al azar.
 - Complete traversal: generará todas las imágenes posibles.
 
-El fichero PSD tiene que tener un primer nivel de grupos y, dentro de cada grupo, las opciones de capa.
+El fichero PSD tiene que tener un primer nivel de grupos y, dentro de cada grupo, una capa por cada opción.
 
 Cada capa debe tener un nombre con la siguiente estructura (los textos entre llaves son variables):
 
     {texto arbitrario}[{peso probabilístico}]#{categoria 1}:{valor 1}|{categoria 2}:{valor2}|...
+
+Por ejemplo:
+
+    nariz bruja[4]#nariz:grande|color:verde
 
 Hay un fichero PSD de ejemplo en la carpeta _demo-resources_.
 
