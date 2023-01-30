@@ -1,65 +1,65 @@
 # Ratalayer
 
-Script para generar una colección de imágenes a partir de las capas de un fichero PSD.
+Script to generate a collection of images from the layers of a PSD file.
 
-Permite evitar las combinaciones incompatibles mediante la asignación de categorías a las capas.
+Allows you to avoid incompatible combinations by assigning categories to layers.
 
-Dispone de opciones para generar todas las combinaciones posibles o solo un subconjunto al azar.
+You have options to generate all possible combinations or just a random subset.
 
-## Requisitos
+## Requirements
 
-Necesitas tener instalado Photoshop 24.1.1 o superior (probablemente funcione en versiones más antiguas).
+You need to have Photoshop 24.1.1 or higher installed (probably works on older versions).
 
-## Cómo ejecutarlo
+## How to run it
 
-Para ejecutarlo, con la imagen abierta en Photoshop:
+To run it, with the image open in Photoshop:
 
-    Archivo > Secuencia de comandos > Explorar...
+     File > Script > Explore...
 
-Selecciona el fichero __ratascript.jsx__
+Select the file __ratascript.jsx__
 
-La ventana emergente te informa del número de imágenes (combinaciones de capas) que pueden construirse.
+The popup window informs you of the number of images (layer combinations) that can be built.
 
-Elige el nombre de la colección y el tipo de generación:
-- Only some random images: generará el número de imágenes elegido al azar.
-- Complete traversal: generará todas las imágenes posibles.
+Choose the name of the collection and the type of generation:
+- Only some random images: will generate the number of images chosen at random.
+- Complete traversal: will generate all possible images.
 
-El fichero PSD tiene que tener un primer nivel de grupos y, dentro de cada grupo, una capa por cada opción.
+The PSD file must have a first level of groups and, within each group, a layer for each option.
 
-Cada capa debe tener un nombre con la siguiente estructura (los textos entre llaves son variables):
+Each layer must have a name with the following structure (the texts between braces are variables):
 
-    {texto arbitrario}[{peso probabilístico}]#{categoria 1}:{valor 1}|{categoria 2}:{valor2}|...
+     {arbitrary text}[{probabilistic weight}]#{category 1}:{value 1}|{category 2}:{value2}|...
 
-Por ejemplo:
+For example:
 
-    nariz bruja[4]#nariz:grande|color:verde
+     witch nose[4]#nose:big|color:green
 
-En el apartado "Categorías" hay más información sobre cómo utilizar las categorías.
+In the section "Categories" there is more information on how to use the categories.
 
-Hay un fichero PSD de ejemplo en la carpeta _demo-resources_.
+There is a sample PSD file in the _demo-resources_ folder.
 
-Las imágenes se generan en una carpeta _build_ a la par del fichero PSD.
+The images are generated in a _build_ folder next to the PSD file.
 
-## Categorías
+## Categories
 
-Las categorías son un mecanismo para evitar combinar capas con contenido incompatible. Por ejempo, para evitar esto:
+Categories are a mechanism to avoid mixing layers with incompatible content. For example, to avoid this:
 
 ![Wrong image](doc-res/error1.png)
 
-Las salchichas en este ejemplo solo son compatibles con el brazo levantado:
+The sausages in this example are only supported on the raised arm:
 
 ![Right image](doc-res/right1.png)
 
-Para indicar al script qué capas son compatibles, debemos establecer un valor común para ambas en una categoría. En este caso la categoría puede ser "arm", con dos valores: "up" y "down". La capa con el brazo levantado tendrá indicado, en el nombre, la categoría "arm" con el valor "up":
+To tell the script which layers are compatible with each other, we need to set a common value for all of them in a category. In this case the category can be "arm", with two values: "up" and "down". The layer with the raised arm will have the category "arm" indicated in the name with the value "up":
 
-    raised hand#arm:up
+     raised hand#arm:up
 
 ![Raised arm](doc-res/raised-arm.png)
 
-Por su parte, la capa con las salchichas tendrá el mismo valor para la categoría:
+The layer with the sausages will have the same value for the "arm" category:
 
-    sausage#arm:up
+     sausage#arm:up
 
 ![Sausage](doc-res/sausage.png)
 
-Una misma capa puede tener muchas categorías, y se pueden combinar las categorías con un peso para controlar la probabilidad en el caso de generarse un subconjunto aleatorio de combinaciones.
+The same layer can have many categories, and the categories can be combined with a weight to control the probability in the case of generating a random subset of combinations.
