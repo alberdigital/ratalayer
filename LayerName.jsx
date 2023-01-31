@@ -24,7 +24,7 @@ LayerName.prototype = {
 			cats[nameCatParts[0]] = nameCatParts[1];
 
 		}
-		
+
 		return cats;
 	},
 
@@ -39,5 +39,5 @@ LayerName.prototype = {
 		}
 	}
 
-	
+
 }
