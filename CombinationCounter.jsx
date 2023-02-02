@@ -188,7 +188,9 @@ CombinationCounter.prototype = {
 			var hash = this.toHash();
 			if (!new ArrayExt(this.randomGeneratedLog).contains(hash)) {
 				newCombinationFound = true;
-				this.randomGeneratedLog.push(hash);
+				if (this.checkCategoryCompatibility().valid) {
+					this.randomGeneratedLog.push(hash);
+				}
 			}
 		} while (!newCombinationFound && attempts < this.maxRandomAttempts);
 
