@@ -50,6 +50,19 @@ CombinationCounter.prototype = {
 		}
 	},
 
+	categoriesAreCompatible: function(cats1, cats2) {
+		// Comprueba si las categorías de cat2 son compatibles con las de cat1.
+		var combinationIsValid = true;
+		for (var catTitle in cats2) {
+			if (catTitle in cats1 && cats1[catTitle] != cats2[catTitle]) {
+				// La combinación no es válida
+				combinationIsValid = false;
+				break;
+			}
+		}
+		return combinationIsValid;
+	},
+
 	/**
 	 * Itera los grupos para comprobar si la combinación de capas es válida. Será válida si las categorías de todas las capas son compatibles.
 	 * @returns Un objeto con la siguiente estructura:
@@ -59,30 +72,26 @@ CombinationCounter.prototype = {
 	 *    }
 	 */
 	checkCategoryCompatibility: function() {
-		var combinationIsValid = true;
+		return this.getSmallestCompatibleGroup() == 0;
+	},
+
+	getSmallestCompatibleGroup: function() {
+		var smallestCompatibleGroup = 0;
 		var cats = {};
-		for (var g = 0; g < this.groups.length; g++) {
+		for (var g = this.groups.length - 1; g >= 0 ; g--) {
 			var group = this.groups[g];
 
 			// Selecciona la capa activa de este grupo.
 			var layer = group.layers[group.currentLayer];
 
-			// Comprueba si las categorías de esta capa son compatibles con las de capas anteriores.
-			for (var catTitle in layer.cats) {
-				var catValue = layer.cats[catTitle];
-				if (catTitle in cats && cats[catTitle] != catValue) {
-					// La capa no es válida, así que la combinación tampoco. Termina devolviendo null.
-					combinationIsValid = false;
-					break;
-				}
-			}
-
-			// No sigue iterando los grupos.
-			if (!combinationIsValid) {
+			// Comprueba si las categorías de esta capa no son compatibles con las de capas anteriores.
+			// Observa que, en la primera iteración no hay categorías previas, por lo que siempre serán compatibles.
+			if (!this.categoriesAreCompatible(cats, layer.cats)) {
+				smallestCompatibleGroup = g + 1;
 				break;
 			}
 
-			// Si la imagen es válida, añade las nuevas categorías.
+			// Si la capa es válida, añade las nuevas categorías.
 			for (var catTitle in layer.cats) {
 				if (!(catTitle in cats)) {
 					cats[catTitle] = layer.cats[catTitle];
@@ -91,7 +100,7 @@ CombinationCounter.prototype = {
 
 		}
 
-		return combinationIsValid;
+		return smallestCompatibleGroup;
 	},
 
 	/**
@@ -162,7 +171,62 @@ CombinationCounter.prototype = {
 	 * @returns true si pudo incrementar, false en otro caso.
 	 */
 	increment: function() {
-		return this.incrementGroup(this.numGroups - 1);
+		return this.incrementGroup(0);
+	},
+
+	incrementOneValidCombination: function() {
+
+		// Si partimos de una combinación compatible, incrementamos uno para garantizar que hay
+		// un incremento.
+		if (this.getSmallestCompatibleGroup() == 0) {
+			var incrementSuccess = this.incrementGroup(0);
+
+			// Si no se puede incrementar, signifca que no existe una combinación válida posterior
+			// a la de partida. Termina con fallo.
+			if (!incrementSuccess) return false;
+		}
+
+		do {
+			var smallestCompatibleGroup = this.getSmallestCompatibleGroup();
+
+			// Si el grupo más pequeño compatible es el 0, entonces la combinación entera ya es compatible. Hemos terminado.
+			if (smallestCompatibleGroup == 0) {
+				return true;
+			}
+
+			// Si la combinación no es compatible, incrementa en uno el grupo inmediatamente inferior al menor compatible.
+			incrementSuccess = this.incrementGroup(smallestCompatibleGroup - 1)
+
+			// Si no se puede incrementar, signifca que no existe una combinación válida posterior
+			// a la de partida. Termina con fallo.
+			if (!incrementSuccess) return false;
+
+		} while (true);
+
+	},
+
+	incrementGroup: function(gInc) {
+
+		if (gInc >= this.groups.length) {
+			// Imposible incrementar más, hemos llegado al máximo.
+			return false;
+		}
+
+		// Todos los grupos por debajo a 0.
+		for (g = 0; g < gInc - 1; g++) {
+			this.groups[g].currentLayer = 0;
+		}
+
+		this.groups[gInc].currentLayer++;
+		if (this.groups[gInc].currentLayer >= this.groups[gInc].layers.length) {
+			this.groups[gInc].currentLayer = 0;
+
+			// Me llevo una.
+			return this.incrementGroup(gInc + 1)
+		} else {
+			// Incremento completado.
+			return true;
+		}
 	},
 
 	/**
@@ -223,7 +287,7 @@ CombinationCounter.prototype = {
 		var groupStrs = [];
 		for (var g = 0; g < this.groups.length; g++) {
 			var group = this.groups[g];
-			groupStrs.push(group.groupName + ": " + group.currentLayer + "/" + group.layers.length);
+			groupStrs.push(group.groupName + ": " + group.currentLayer + "/" + (group.layers.length - 1));
 		}
 		return groupStrs.join(", ");
 	},

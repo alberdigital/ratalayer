@@ -193,13 +193,12 @@
 			}
 
 			// Siguiente combinación.
-			if (imageCounter >= maxImages) {
+			if (maxImages != null && imageCounter >= maxImages) {
 				break;
 			}
 
 			if (doInDepthGeneration) {
-				var noMoreCombinations = combinationCounter.increment()
-				if (!noMoreCombinations) {
+				if (!combinationCounter.incrementOneValidCombination()) {
 					break;
 				}
 			} else {
