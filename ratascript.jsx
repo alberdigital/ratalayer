@@ -14,10 +14,13 @@
 	 * @param _groups Los grupos de primer nivel del documento.
 	 */
 	function resetLayers(_groups) {
+		$.writeln("Reset layers");
 		for (var i = 0; i < _groups.length; i++) {
 			_groups[i].visible = true;
 			for (var j = 0; j < _groups[i].layers.length; j++) {
-				_groups[i].layers[j].visible = false;
+				if (_groups[i].layers[j].visible) {
+					_groups[i].layers[j].visible = false;
+				}
 			}
 		}
 	}
@@ -120,24 +123,25 @@
 		var imageCounter = 0;
 		var notValidInARowCounter = 0;
 
+		// Resetea los grupos, dejando todas las capas desactivadas.
+		resetLayers(groups);
+
 		// Cada iteración genera una imagen.
 		do {
 			$.writeln("----------------------");
 			$.writeln("New combination");
 			$.writeln(combinationCounter.toString());
 
-			var categoryCompatibilityCheckResult = combinationCounter.checkCategoryCompatibility();
-			var cats = categoryCompatibilityCheckResult.cats;
-			var combinationIsValid = categoryCompatibilityCheckResult.valid;
+			var combinationIsValid = combinationCounter.checkCategoryCompatibility();
+			var cats = combinationCounter.getCategories();
 
 			$.writeln("Combination categories: " + JSON.stringify(cats));
 			$.writeln("Valid image? " + (combinationIsValid ? "yes" : "no"));
 
 			if (combinationIsValid) {
 
-				// Resetea los grupos e itera para activar solo la capa activa de cada grupo.
+				// Itera para activar solo la capa activa de cada grupo.
 				$.writeln("Activating layers");
-				resetLayers(groups);
 				for (var g = 0; g < groups.length; g++) {
 					var group = groups[g];
 					var layerIndex = combinationCounter.getCurrentLayer(g)
@@ -152,6 +156,15 @@
 				var fileName = collectionName + imageCounter;
 				$.writeln("Saving image: " + fileName);
 				fileManager.saveImage(collectionName, fileName);
+
+				// Desactiva solamente las capas que había activado, por eficiencia.
+				$.writeln("Deactivating layers");
+				for (var g = 0; g < groups.length; g++) {
+					var group = groups[g];
+					var layerIndex = combinationCounter.getCurrentLayer(g)
+					var layer = group.layers[layerIndex];
+					layer.visible = false;
+				}
 
 				// Genera metadatos.
 				var layersNames = {};

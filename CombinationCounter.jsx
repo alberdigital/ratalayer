@@ -91,11 +91,30 @@ CombinationCounter.prototype = {
 
 		}
 
-		return {
-			valid: combinationIsValid,
-			cats: combinationIsValid ? cats : null
-		};
+		return combinationIsValid;
+	},
 
+	/**
+	 * Returns the image categories, if the combination is valid.
+	 *
+	 * Por eficiencia, no verifica la validez de las categorías. Si dos grupos tienen categorías incompatibles,
+	 * se devolverá la categoría del último grupo revisado.
+	 */
+	getCategories: function() {
+		var cats = {};
+		for (var g = 0; g < this.groups.length; g++) {
+			var group = this.groups[g];
+
+			// Selecciona la capa activa de este grupo.
+			var layer = group.layers[group.currentLayer];
+
+			// Añade las nuevas categorías.
+			for (var catTitle in layer.cats) {
+				cats[catTitle] = layer.cats[catTitle];
+			}
+
+		}
+		return cats;
 	},
 
 	countCombinations: function() {
@@ -112,7 +131,7 @@ CombinationCounter.prototype = {
 		var count = 0;
 
 		do {
-			if (this.checkCategoryCompatibility().valid) {
+			if (this.checkCategoryCompatibility()) {
 				count++;
 			}
 		} while (this.increment());
@@ -188,7 +207,7 @@ CombinationCounter.prototype = {
 			var hash = this.toHash();
 			if (!new ArrayExt(this.randomGeneratedLog).contains(hash)) {
 				newCombinationFound = true;
-				if (this.checkCategoryCompatibility().valid) {
+				if (this.checkCategoryCompatibility()) {
 					this.randomGeneratedLog.push(hash);
 				}
 			}
