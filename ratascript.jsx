@@ -29,13 +29,8 @@
 		return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 	}
 
-	function main() {
-
+	function showDialog(combinationCounter) {
 		// Diálogo de entrada.
-		var groups = app.activeDocument.layerSets;
-
-		var combinationCounter = new CombinationCounter();
-		combinationCounter.init(groups);
 
 		// If there are too many combinations to analyze, counting the number of valid combinations
 		// would take too long. In that case, only inform the number of combinations.
@@ -84,8 +79,8 @@
 
 		w.buttonGroup = w.add("group");
 		w.buttonGroup.orientation = "row";
-  		w.buttonGroup.add("button", undefined, "Ok");
-  		var cancelButton = w.buttonGroup.add("button", undefined, "Cancel");
+			w.buttonGroup.add("button", undefined, "Ok");
+			var cancelButton = w.buttonGroup.add("button", undefined, "Cancel");
 
 		// Define the behavior of the buttons.
 		var startGeneration = true;
@@ -96,29 +91,52 @@
 		}
 		w.show();
 
-		if (!startGeneration) {
-			return 0;
+		var doInDepthGeneration = tabPanel.selection.text == tabDepth.text;
+
+		var options = {
+			startGeneration: startGeneration,
+			collectionName: collectionNameInput.text,
+			doInDepthGeneration: doInDepthGeneration,
+			maxImages: doInDepthGeneration
+					? (maxImagesInput.text === "" ? null : parseInt(maxImagesInput.text))
+					: (numImagesInput.text === "" ? 1 : parseInt(numImagesInput.text)),
+			randomStart: randomStartCheckbox.value
+
 		}
 
-		var collectionName = collectionNameInput.text;
-		var doInDepthGeneration = tabPanel.selection.text == tabDepth.text;
-		var maxImages = doInDepthGeneration
-				? (maxImagesInput.text === "" ? null : parseInt(maxImagesInput.text))
-				: (numImagesInput.text === "" ? 1 : parseInt(numImagesInput.text));
-		var randomStart = randomStartCheckbox.value;
+		$.writeln(
+				"User options: " + options.collectionName
+				+ " | in-depth generation: " + (options.doInDepthGeneration ? "yes" : "no")
+				+ " | max images: " + options.maxImages
+				+ " | random start: " + (options.randomStart ? "yes" : "no"));
 
-		$.writeln("Building collection: " + collectionName
-				+ " | in-depth generation: " + (doInDepthGeneration ? "yes" : "no")
-				+ " | max images: " + maxImages
-				+ " | random start: " + (randomStart ? "yes" : "no"));
+		return options;
+
+	}
+
+	function main() {
+
+		var groups = app.activeDocument.layerSets;
+
+		var combinationCounter = new CombinationCounter();
+		combinationCounter.init(groups);
+
+		var options = showDialog(combinationCounter);
+
+		if (!options.startGeneration) {
+			return 0;
+		}
 
 		// Inicialización.
 
 		var fileManager = new FileManager(app.activeDocument.path);
 
-		if (!doInDepthGeneration || randomStart) {
+		if (!options.doInDepthGeneration || options.randomStart) {
 			combinationCounter.setRandomNoRepeat();
 		}
+
+		// Go to first valid combination.
+		combinationCounter.firstValidCombination();
 
 		var imageCounter = 0;
 		var notValidInARowCounter = 0;
@@ -153,9 +171,9 @@
 				notValidInARowCounter = 0;
 
 				// Guarda la imagen.
-				var fileName = collectionName + imageCounter;
+				var fileName = options.collectionName + imageCounter;
 				$.writeln("Saving image: " + fileName);
-				fileManager.saveImage(collectionName, fileName);
+				fileManager.saveImage(options.collectionName, fileName);
 
 				// Desactiva solamente las capas que había activado, por eficiencia.
 				$.writeln("Deactivating layers");
@@ -176,7 +194,7 @@
 				}
 
 				var metadata = {
-					collectionName: collectionName,
+					collectionName: options.collectionName,
 					fileName: fileName,
 					layers: layersNames,
 					categories: cats
@@ -193,12 +211,12 @@
 			}
 
 			// Siguiente combinación.
-			if (maxImages != null && imageCounter >= maxImages) {
+			if (options.maxImages != null && imageCounter >= options.maxImages) {
 				break;
 			}
 
-			if (doInDepthGeneration) {
-				if (!combinationCounter.incrementOneValidCombination()) {
+			if (options.doInDepthGeneration) {
+				if (!combinationCounter.nextValidCombination()) {
 					break;
 				}
 			} else {
@@ -211,7 +229,7 @@
 
 		} while (true)
 
-		return "Finished: " + collectionName;
+		return "Finished: " + options.collectionName;
 	}
 
 	return main();

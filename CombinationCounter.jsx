@@ -174,7 +174,7 @@ CombinationCounter.prototype = {
 		return this.incrementGroup(0);
 	},
 
-	incrementOneValidCombination: function() {
+	nextValidCombination: function() {
 
 		// Si partimos de una combinación compatible, incrementamos uno para garantizar que hay
 		// un incremento.
@@ -186,6 +186,11 @@ CombinationCounter.prototype = {
 			if (!incrementSuccess) return false;
 		}
 
+		return this.firstValidCombination()
+
+	},
+
+	firstValidCombination: function() {
 		do {
 			var smallestCompatibleGroup = this.getSmallestCompatibleGroup();
 
@@ -202,7 +207,6 @@ CombinationCounter.prototype = {
 			if (!incrementSuccess) return false;
 
 		} while (true);
-
 	},
 
 	incrementGroup: function(gInc) {
