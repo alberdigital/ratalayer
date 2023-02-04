@@ -6,7 +6,6 @@
 
 (function() {
 
-	var MAX_COMBINATIONS = 50000;
 	var MAX_NOT_VALID_IN_A_ROW = 10000;
 
 	/**
@@ -35,21 +34,25 @@
 		// If there are too many combinations to analyze, counting the number of valid combinations
 		// would take too long. In that case, only inform the number of combinations.
 		var combinationNum = combinationCounter.countCombinations();
-		var combinationNumText, inDepthGenerationRadioText;
 
-		if (combinationNum > MAX_COMBINATIONS) {
-			combinationNumText = "There are " + formatNumber(combinationNum) + " combinations.";
-			inDepthGenerationRadioText =  "In-depth generation (up to " + formatNumber(MAX_COMBINATIONS) + " combinations).";
-		} else {
+		var validCombinationNumText;
+		if (combinationNum < 1000) {
 			var validCombinationNum = combinationCounter.countValidCombinations();
-			inDepthGenerationRadioText =  "In-depth generation.";
-			combinationNumText = "There are " + formatNumber(validCombinationNum) + " valid combinations."
+			validCombinationNumText = validCombinationNum == -1
+					? "There are more than " + formatNumber(combinationCounter.maxValidCombinationsToCount)
+							+ " valid combinations."
+					: "There are " + formatNumber(validCombinationNum) + " valid combinations."
+		} else {
+			validCombinationNumText = "There are too many combinations to count the valid ones.";
 		}
+
+		var combinationNumText = "(" + formatNumber(combinationNum) + " combinations in total)."
 
 		var w = new Window("dialog", "New collection");
 		w.alignChildren = "left";
 		w.add("statictext", undefined, "Collection name:");
 		var collectionNameInput = w.add("edittext", undefined, "my-collection");
+		w.add("statictext", undefined, validCombinationNumText);
 		w.add("statictext", undefined, combinationNumText);
 
 		var tabPanel = w.add("tabbedpanel");
@@ -136,7 +139,9 @@
 		}
 
 		// Go to first valid combination.
-		combinationCounter.firstValidCombination();
+		if (!combinationCounter.firstValidCombination()) {
+			return "No valid combination found.";
+		}
 
 		var imageCounter = 0;
 		var notValidInARowCounter = 0;

@@ -12,6 +12,10 @@ function CombinationCounter() {
 	// Número máximo de intentos de obtener una combinación no generada previamente.
 	this.maxAttemptsToGetANewCombination = 500;
 
+	// Número máximo de combinaciones que se pueden contar. A partir de este número no se informará
+	// de las combinaciones válidas.
+	this.maxValidCombinationsToCount = 500;
+
 	this.numGroups = 0;
 	this.groups = [];
 	this.randomGeneratedLog = [];
@@ -143,13 +147,17 @@ CombinationCounter.prototype = {
 
 	countValidCombinations: function() {
 		this.reset();
-		var count = 0;
 
-		do {
-			if (this.checkCategoryCompatibility()) {
-				count++;
+		// Si la primera combinación es válida, cuéntala.
+		var count = this.checkCategoryCompatibility() ? 1 : 0;
+
+		// Cuenta las combinaciones a partir de la primera.
+		while (this.nextValidCombination()) {
+			count++;
+			if (count > this.maxValidCombinationsToCount) {
+				return -1;
 			}
-		} while (this.increment());
+		};
 
 		return count;
 	},
