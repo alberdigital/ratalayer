@@ -6,8 +6,6 @@
 
 (function() {
 
-	var MAX_NOT_VALID_IN_A_ROW = 10000;
-
 	/**
 	 * Hace visibles todos los grupos y oculta todas las capas.
 	 * @param _groups Los grupos de primer nivel del documento.
@@ -161,59 +159,52 @@
 			$.writeln("Combination categories: " + JSON.stringify(cats));
 			$.writeln("Valid image? " + (combinationIsValid ? "yes" : "no"));
 
-			if (combinationIsValid) {
-
-				// Itera para activar solo la capa activa de cada grupo.
-				$.writeln("Activating layers");
-				for (var g = 0; g < groups.length; g++) {
-					var group = groups[g];
-					var layerIndex = combinationCounter.getCurrentLayer(g)
-					var layer = group.layers[layerIndex];
-					layer.visible = true;
-				}
-
-				imageCounter++;
-				notValidInARowCounter = 0;
-
-				// Guarda la imagen.
-				var fileName = options.collectionName + imageCounter;
-				$.writeln("Saving image: " + fileName);
-				fileManager.saveImage(options.collectionName, fileName);
-
-				// Desactiva solamente las capas que había activado, por eficiencia.
-				$.writeln("Deactivating layers");
-				for (var g = 0; g < groups.length; g++) {
-					var group = groups[g];
-					var layerIndex = combinationCounter.getCurrentLayer(g)
-					var layer = group.layers[layerIndex];
-					layer.visible = false;
-				}
-
-				// Genera metadatos.
-				var layersNames = {};
-				for (var g = 0; g < groups.length; g++) {
-					var group = groups[g];
-					var layerIndex = combinationCounter.getCurrentLayer(g)
-					var layer = group.layers[layerIndex];
-					layersNames[group.name] = layer.name
-				}
-
-				var metadata = {
-					collectionName: options.collectionName,
-					fileName: fileName,
-					layers: layersNames,
-					categories: cats
-				};
-				fileManager.saveMetadata(metadata);
-
-			} else {
-				notValidInARowCounter++;
-				if (notValidInARowCounter > MAX_NOT_VALID_IN_A_ROW) {
-					alert("Too many attempts without finding any valid combinations (more than "
-							+  formatNumber(MAX_NOT_VALID_IN_A_ROW) + ").")
-					break;
-				}
+			if (!combinationIsValid) {
+				return "Error: se generó una combinación no válida.";
 			}
+
+			// Itera para activar solo la capa activa de cada grupo.
+			$.writeln("Activating layers");
+			for (var g = 0; g < groups.length; g++) {
+				var group = groups[g];
+				var layerIndex = combinationCounter.getCurrentLayer(g)
+				var layer = group.layers[layerIndex];
+				layer.visible = true;
+			}
+
+			imageCounter++;
+			notValidInARowCounter = 0;
+
+			// Guarda la imagen.
+			var fileName = options.collectionName + imageCounter;
+			$.writeln("Saving image: " + fileName);
+			fileManager.saveImage(options.collectionName, fileName);
+
+			// Desactiva solamente las capas que había activado, por eficiencia.
+			$.writeln("Deactivating layers");
+			for (var g = 0; g < groups.length; g++) {
+				var group = groups[g];
+				var layerIndex = combinationCounter.getCurrentLayer(g)
+				var layer = group.layers[layerIndex];
+				layer.visible = false;
+			}
+
+			// Genera metadatos.
+			var layersNames = {};
+			for (var g = 0; g < groups.length; g++) {
+				var group = groups[g];
+				var layerIndex = combinationCounter.getCurrentLayer(g)
+				var layer = group.layers[layerIndex];
+				layersNames[group.name] = layer.name
+			}
+
+			var metadata = {
+				collectionName: options.collectionName,
+				fileName: fileName,
+				layers: layersNames,
+				categories: cats
+			};
+			fileManager.saveMetadata(metadata);
 
 			// Siguiente combinación.
 			if (options.maxImages != null && imageCounter >= options.maxImages) {
