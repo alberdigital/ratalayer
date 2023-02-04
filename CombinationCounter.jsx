@@ -5,7 +5,13 @@
  * setRandom() permite establecer una capa activa aleatoria (con pesos) para cada grupo.
  */
 function CombinationCounter() {
-	this.maxRandomAttempts = 500;
+
+	// Número máximo de intentos de obtener una capa aleatoria por cada grupo.
+	this.maxAttemptsToGetValidRandomLayer = 500;
+
+	// Número máximo de intentos de obtener una combinación no generada previamente.
+	this.maxAttemptsToGetANewCombination = 500;
+
 	this.numGroups = 0;
 	this.groups = [];
 	this.randomGeneratedLog = [];
@@ -233,58 +239,94 @@ CombinationCounter.prototype = {
 		}
 	},
 
-	/**
-	 * Establece una capa activa al azar en cada grupo, respetando los pesos indicados en el nombre
-	 * de cada capa (entre corchetes).
-	 */
-	setRandom: function() {
+	chooseRandomInWeightedCollection: function(list) {
+		var result;
 
-		for (var g = 0; g < this.numGroups; g++) {
-			var group = this.groups[g];
+		// Obtén el total de pesos.
+		var totalWeight = 0;
+		for (var l = 0; l < list.length; l++) {
+			totalWeight += list[l].weight;
+		}
 
-			// Obtén el total de pesos.
-			var totalWeight = 0;
-			for (var l = 0; l < group.layers.length; l++) {
-				totalWeight += group.layers[l].weight;
-			}
+		// Generar un número aleatorio entre 0 y el total de pesos
+		var randNum = Math.random() * totalWeight;
 
-			// Generar un número aleatorio entre 0 y el total de pesos
-			var randNum = Math.random() * totalWeight;
-
-			// Recorrer la lista de objetos
-			var accumulated = 0;
-			for (var l = 0; l < group.layers.length; l++) {
-				accumulated += group.layers[l].weight;
-				if (accumulated >= randNum) {
-					group.currentLayer = l;
-					break;
-				}
+		// Recorrer la lista de objetos
+		var accumulated = 0;
+		for (var l = 0; l < list.length; l++) {
+			accumulated += list[l].weight;
+			if (accumulated >= randNum) {
+				result = l;
+				break;
 			}
 		}
+
+		return result;
+	},
+
+	setRandom: function() {
+		var attempts = 0;
+
+		// Construye grupo a grupo.
+		var cats = {};
+		for (g = 0; g < this.groups.length; g++) {
+			var group = this.groups[g];
+
+			// Repite hasta encontrar una capa cuyas categorías sean compatibles con las de capas de los
+			// grupos revisados previamente. (Observa que, en el primer grupo no hay categorías
+			// previas, por lo que siempre serán compatibles.)
+			var attempts = 0;
+			do {
+				// Control de seguridad, por si no hubiera posibilidad de encontrar una capa válida por
+				// ser todas incompatibles.
+				if (attempts++ > this.maxAttemptsToGetValidRandomLayer) {
+					return false;
+				}
+
+				// Elige una categoría al azar.
+				var l = this.chooseRandomInWeightedCollection(group.layers);
+				var layer = group.layers[l];
+
+			} while (!this.categoriesAreCompatible(cats, layer.cats));
+
+			// Añade las nuevas categorías.
+			for (var catTitle in layer.cats) {
+				if (!(catTitle in cats)) {
+					cats[catTitle] = layer.cats[catTitle];
+				}
+			}
+
+			// Asigna la capa al grupo.
+			group.currentLayer = l;
+		}
+
+		return true;
+
 	},
 
 	setRandomNoRepeat: function() {
 		var attempts = 0;
 
 		do {
-			this.setRandom();
-			attempts++;
+			// Si no consigue encontrar una imagen válida nueva en un número de intentos, termina indicando fracaso.
+			if (attempts++ >= this.maxAttemptsToGetANewCombination) {
+				return false;
+			}
 
-			// Anota en un log para evitar repetir.
-			var newCombinationFound = false;
+			// Intenta generar una imagen aleatoria. Si no lo consigue termina indicando fracaso.
+			if (!this.setRandom()) {
+				return false;
+			}
+
 			var hash = this.toHash();
 			if (!new ArrayExt(this.randomGeneratedLog).contains(hash)) {
-				newCombinationFound = true;
-				if (this.checkCategoryCompatibility()) {
-					this.randomGeneratedLog.push(hash);
-				}
-			}
-		} while (!newCombinationFound && attempts < this.maxRandomAttempts);
+				// Anota en un log para evitar repetir.
+				this.randomGeneratedLog.push(hash);
 
-		if (!newCombinationFound && attempts >= this.maxRandomAttempts) {
-			return false;
-		}
-		return true;
+				return true;
+			}
+		} while (true);
+
 	},
 
 	toString: function() {

@@ -222,7 +222,7 @@
 			} else {
 				var randomCombinationFound = combinationCounter.setRandomNoRepeat();
 				if (!randomCombinationFound) {
-					alert("Cannot find a new combination after " + combinationCounter.maxRandomAttempts + " attempts.");
+					alert("Cannot find a new valid combination, too many attempts.");
 					break;
 				}
 			}
