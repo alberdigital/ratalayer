@@ -7,10 +7,10 @@
 function CombinationCounter() {
 
 	// Número máximo de intentos de obtener una capa aleatoria por cada grupo.
-	this.maxAttemptsToGetValidRandomLayer = 500;
+	this.maxAttemptsToGetValidRandomLayer = 1000;
 
 	// Número máximo de intentos de obtener una combinación no generada previamente.
-	this.maxAttemptsToGetANewCombination = 500;
+	this.maxAttemptsToGetANewCombination = 1000;
 
 	// Número máximo de combinaciones que se pueden contar. A partir de este número no se informará
 	// de las combinaciones válidas.
