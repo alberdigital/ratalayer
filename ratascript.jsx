@@ -80,8 +80,8 @@
 
 		w.buttonGroup = w.add("group");
 		w.buttonGroup.orientation = "row";
-			w.buttonGroup.add("button", undefined, "Ok");
-			var cancelButton = w.buttonGroup.add("button", undefined, "Cancel");
+		w.buttonGroup.add("button", undefined, "Ok");
+		var cancelButton = w.buttonGroup.add("button", undefined, "Cancel");
 
 		// Define the behavior of the buttons.
 		var startGeneration = true;
@@ -122,11 +122,21 @@
 		var combinationCounter = new CombinationCounter();
 		combinationCounter.init(groups);
 
+		// Crea el diálogo de opciones inicial.
 		var options = showDialog(combinationCounter);
 
 		if (!options.startGeneration) {
 			return 0;
 		}
+
+		// Ventana durante la ejecución.
+		var infoWindow = new Window("window", "Generating Images", );
+		infoWindow.alignChildren = "left";
+		var countText = infoWindow.add("statictext", undefined, "Initializing...");
+		countText.preferredSize = [250, 60];
+		infoWindow.add("statictext", undefined, "Press ESC to exit.");
+
+		infoWindow.show();
 
 		// Inicialización.
 
@@ -142,7 +152,6 @@
 		}
 
 		var imageCounter = 0;
-		var notValidInARowCounter = 0;
 
 		// Resetea los grupos, dejando todas las capas desactivadas.
 		resetLayers(groups);
@@ -152,6 +161,9 @@
 			$.writeln("----------------------");
 			$.writeln("New combination");
 			$.writeln(combinationCounter.toString());
+
+			countText.text = "Generating image: " + imageCounter;
+			infoWindow.update();
 
 			var combinationIsValid = combinationCounter.checkCategoryCompatibility();
 			var cats = combinationCounter.getCategories();
@@ -173,7 +185,6 @@
 			}
 
 			imageCounter++;
-			notValidInARowCounter = 0;
 
 			// Guarda la imagen.
 			var fileName = options.collectionName + imageCounter;
