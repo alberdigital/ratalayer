@@ -40,6 +40,7 @@ CombinationCounter.prototype = {
 				var weight = weightStr == null ? 1 : parseInt(weightStr);
 
 				layers.push({
+					index: l,
 					layerName: layerName,
 					weight: weight,
 					cats: new LayerName(layerName).extractCats()
@@ -256,10 +257,10 @@ CombinationCounter.prototype = {
 			totalWeight += list[l].weight;
 		}
 
-		// Generar un número aleatorio entre 0 y el total de pesos
+		// Generar un número aleatorio entre 0 y el total de pesos.
 		var randNum = Math.random() * totalWeight;
 
-		// Recorrer la lista de objetos
+		// Recorrer la lista de objetos hasta llegar a la suma de pesos elegido.
 		var accumulated = 0;
 		for (var l = 0; l < list.length; l++) {
 			accumulated += list[l].weight;
@@ -273,65 +274,64 @@ CombinationCounter.prototype = {
 	},
 
 	setRandom: function() {
-		var attempts = 0;
 
 		// Construye grupo a grupo.
 		var cats = {};
-		for (g = 0; g < this.groups.length; g++) {
+		for (var g = 0; g < this.groups.length; g++) {
 			var group = this.groups[g];
 
-			// Repite hasta encontrar una capa cuyas categorías sean compatibles con las de capas de los
-			// grupos revisados previamente. (Observa que, en el primer grupo no hay categorías
-			// previas, por lo que siempre serán compatibles.)
-			var attempts = 0;
-			do {
-				// Control de seguridad, por si no hubiera posibilidad de encontrar una capa válida por
-				// ser todas incompatibles.
-				if (attempts++ > this.maxAttemptsToGetValidRandomLayer) {
-					return false;
-				}
-
-				// Elige una categoría al azar.
-				var l = this.chooseRandomInWeightedCollection(group.layers);
+			// Crea un array que solo contenga las capas con categorías compatibles.
+			var compatibleLayers = []
+			for (var l = 0; l < group.layers.length; l++) {
 				var layer = group.layers[l];
-
-			} while (!this.categoriesAreCompatible(cats, layer.cats));
-
-			// Añade las nuevas categorías.
-			for (var catTitle in layer.cats) {
-				if (!(catTitle in cats)) {
-					cats[catTitle] = layer.cats[catTitle];
+				if (this.categoriesAreCompatible(cats, layer.cats)) {
+					compatibleLayers.push(layer);
 				}
 			}
 
-			// Asigna la capa al grupo.
-			group.currentLayer = l;
+			// Si no se ha encontrado ninguna capa compatible, es imposible generar la imagen. Termina con error.
+			if (compatibleLayers.length == 0) {
+
+				throw new Error("Cannot find compatible layer for group " + g + " (" + group.groupName + "). "
+						+ "Selected previous categories: " + JSON.stringify(cats));
+			}
+
+			// Establece como capa activa una de las del array de capas compatibles. Ojo, el orden que ocupa en el grupo
+			// de compatibles no es el mismo que ocupa en el total.
+			var selectedLayerIndexInCompatibleList = this.chooseRandomInWeightedCollection(compatibleLayers)
+			var selectedLayerIndex = compatibleLayers[selectedLayerIndexInCompatibleList].index;
+			var selectedLayer = group.layers[selectedLayerIndex];
+
+			group.currentLayer = selectedLayerIndex;
+
+			// Añade las categorías de la capa seleccionada.
+			for (var catTitle in selectedLayer.cats) {
+				if (!(catTitle in cats)) {
+					cats[catTitle] = selectedLayer.cats[catTitle];
+				}
+			}
+
 		}
-
-		return true;
-
 	},
 
 	setRandomNoRepeat: function() {
 		var attempts = 0;
 
 		do {
-			// Si no consigue encontrar una imagen válida nueva en un número de intentos, termina indicando fracaso.
+			// Si no consigue encontrar una imagen válida nueva en un número de intentos, termina.
 			if (attempts++ >= this.maxAttemptsToGetANewCombination) {
-				return false;
+				throw new Error("Cannot find a new valid combination after " + this.maxAttemptsToGetANewCombination + " attempts.");
 			}
 
-			// Intenta generar una imagen aleatoria. Si no lo consigue termina indicando fracaso.
-			if (!this.setRandom()) {
-				return false;
-			}
+			// Intenta generar una imagen aleatoria.
+			this.setRandom()
 
 			var hash = this.toHash();
 			if (!new ArrayExt(this.randomGeneratedLog).contains(hash)) {
 				// Anota en un log para evitar repetir.
 				this.randomGeneratedLog.push(hash);
 
-				return true;
+				return;
 			}
 		} while (true);
 

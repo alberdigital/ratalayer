@@ -142,13 +142,20 @@
 
 		var fileManager = new FileManager(app.activeDocument.path);
 
-		if (!options.doInDepthGeneration || options.randomStart) {
-			combinationCounter.setRandomNoRepeat();
-		}
+		var randomStart = !options.doInDepthGeneration || options.randomStart
 
-		// Go to first valid combination.
-		if (!combinationCounter.firstValidCombination()) {
-			return "No valid combination found.";
+		if (randomStart) {
+			try {
+				combinationCounter.setRandomNoRepeat();
+			} catch(e) {
+				alert(e.message);
+				return "No valid combination found.";
+			}
+		} else {
+			// Go to first valid combination.
+			if (!combinationCounter.firstValidCombination()) {
+				return "No valid combination found.";
+			}
 		}
 
 		var imageCounter = 0;
@@ -227,9 +234,10 @@
 					break;
 				}
 			} else {
-				var randomCombinationFound = combinationCounter.setRandomNoRepeat();
-				if (!randomCombinationFound) {
-					alert("Cannot find a new valid combination, too many attempts.");
+				try {
+					combinationCounter.setRandomNoRepeat();
+				} catch(e) {
+					alert(e.message);
 					break;
 				}
 			}
