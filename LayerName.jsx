@@ -17,12 +17,13 @@ LayerName.prototype = {
 	 */
 	extractCats: function() {
 		var cats = {};
-		var nameCats = this.layerName.split("#").pop().split("|");
-		for (var i = 0; i < nameCats.length; i++) {
-			var nameCat = nameCats[i];
-			var nameCatParts = nameCat.split(":");
-			cats[nameCatParts[0]] = nameCatParts[1];
-
+		if (this.layerName.indexOf("#") !== -1) {
+			var nameCats = this.layerName.split("#").pop().split("|");
+			for (var i = 0; i < nameCats.length; i++) {
+				var nameCat = nameCats[i];
+				var nameCatParts = nameCat.split(":");
+				cats[nameCatParts[0]] = nameCatParts[1];
+			}
 		}
 
 		return cats;
