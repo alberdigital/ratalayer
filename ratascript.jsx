@@ -26,7 +26,7 @@
 		return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 	}
 
-	function showDialog(combinationCounter) {
+	function showOptionsDialog(combinationCounter) {
 		// Diálogo de entrada.
 
 		// If there are too many combinations to analyze, counting the number of valid combinations
@@ -123,7 +123,7 @@
 		combinationCounter.init(groups);
 
 		// Crea el diálogo de opciones inicial.
-		var options = showDialog(combinationCounter);
+		var options = showOptionsDialog(combinationCounter);
 
 		if (!options.startGeneration) {
 			return 0;
@@ -149,12 +149,13 @@
 				combinationCounter.setRandomNoRepeat();
 			} catch(e) {
 				alert(e.message);
-				return "No valid combination found.";
+				return -1;
 			}
 		} else {
 			// Go to first valid combination.
 			if (!combinationCounter.firstValidCombination()) {
-				return "No valid combination found.";
+				alert("No valid combination found.");
+				return -1;
 			}
 		}
 
@@ -179,7 +180,8 @@
 			$.writeln("Valid image? " + (combinationIsValid ? "yes" : "no"));
 
 			if (!combinationIsValid) {
-				return "Error: se generó una combinación no válida.";
+				alert("Error: se generó una combinación no válida.");
+				return -1;
 			}
 
 			// Itera para activar solo la capa activa de cada grupo.
@@ -191,12 +193,12 @@
 				layer.visible = true;
 			}
 
-			imageCounter++;
-
 			// Guarda la imagen.
 			var fileName = options.collectionName + imageCounter;
 			$.writeln("Saving image: " + fileName);
 			fileManager.saveImage(options.collectionName, fileName);
+
+			imageCounter++;
 
 			// Desactiva solamente las capas que había activado, por eficiencia.
 			$.writeln("Deactivating layers");
@@ -244,7 +246,7 @@
 
 		} while (true)
 
-		return "Finished: " + options.collectionName;
+		return 0;
 	}
 
 	return main();
