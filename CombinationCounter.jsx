@@ -6,9 +6,6 @@
  */
 function CombinationCounter() {
 
-	// Número máximo de intentos de obtener una capa aleatoria por cada grupo.
-	this.maxAttemptsToGetValidRandomLayer = 1000;
-
 	// Número máximo de intentos de obtener una combinación no generada previamente.
 	this.maxAttemptsToGetANewCombination = 1000;
 
@@ -19,6 +16,7 @@ function CombinationCounter() {
 	this.numGroups = 0;
 	this.groups = [];
 	this.randomGeneratedLog = [];
+	this.combinationLog = [];
 }
 
 CombinationCounter.prototype = {
@@ -36,7 +34,7 @@ CombinationCounter.prototype = {
 				var layerName = psLayer.name;
 
 				// Extrae el peso de cada capa.
-				var weightStr = new LayerName(layerName).extractBracketsContent(layerName);
+				var weightStr = new LayerName(layerName).extractBracketsContent();
 				var weight = weightStr == null ? 1 : parseInt(weightStr);
 
 				layers.push({
